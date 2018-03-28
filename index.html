@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+  <head>
+    <title>3132 Picklist</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+  </head>
+<h1>3132 Picklist</h1>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="papaparse.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="pouchdb-6.4.3.min.js"></script>
+<script src="pouchdb.js"></script>
+
+<script src="underscore-min.js"></script>
+
+
+
+<style>
+form {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  position: absolute;
+  left: 10px;
+  top: 10px;
+}
+
+label {
+  display: block;
+}
+
+#graph {
+	align: center;
+}
+
+#myForm {
+	align: center;
+}
+
+</style>
+
+
+
+<form id="myForm">
+  <select id="selectNumber">
+    <option>Choose a number</option>
+  </select>
+  <button id="remove" onclick="removeTeam()">Remove</button>
+  <br></br>
+  Event code: <input type="text" id="ecode"></input>
+  <button id="go" onclick="startAverage()">Generate</button>
+</form>
+
+<svg id="graph" width="1920" height="800"></svg>
+
+<script src="script.js"></script>
+
+<script>
+	function filterByProperty(array, index, value){
+		var filtered = [];
+		for(var i = 0; i < array.length; i++){
+
+			var obj = array[i];
+
+			if(obj[index] == value){
+				filtered.push(obj);
+			}
+
+		}    
+
+		return filtered;
+	}
+	
+	document.getElementById("go").onclick = function() {
+		$("#graph > g:nth-child(1)").remove();
+		$("#graph > g.tooltip").remove();
+	
+		var eventCode = document.getElementById("ecode").value;
+		
+		eventCode = eventCode.replace(/\s/g, '').toUpperCase();
+		eventCode = eventCode.replace(/\d/g, '').toUpperCase();
+		
+		getDatabaseAverages(function(headers, matchesArray) {
+			console.log("Done");
+			
+			var eventMatches = filterByProperty(matchesArray, 0, eventCode);
+			
+			var metrics = {};
+			
+			
+			headerArray = [];
+			
+			for(var i=0; i<headers.length; i++) {
+				var header = "";
+				header = Object.values(headers[i])[0];
+				headerArray.push(header);
+				
+			}
+			
+			metrics["Event Key"] = null;
+			metrics["Team #"] = null;
+			metrics["Line Cross"] = 5;
+			metrics["Opp. Auto"] = -6;
+			metrics["Auto. Switch"] = 6;
+			metrics["Auto. Scale"] = 12;
+			metrics["Auto. Exchange"] = 1;
+			metrics["Teleop. Switch"] = 3;
+			metrics["Teleop. Scale"] = 6;
+			metrics["Teleop. Exchange"] = 3;
+			metrics["Teleop. from Portal"] = 0;
+			metrics["Teleop. from Floor"] = 0;
+			metrics["Teleop. Dropped"] = -3;
+			metrics["Platform"] = 5;
+			metrics["Climbed"] = 30;
+			metrics["Lifted"] = 15;
+			metrics["Lifted Others"] = 15;
+			metrics["Cube Placing"] = 0;
+			metrics["Bad Driving"] = 0;
+			metrics["Top Heavy"] = 0;
+			metrics["Disabled"] = 0;
+			metrics["Robot Failure"] = 0;
+			metrics["Carded"] = -40;
+			metrics["Foul"] = -5;
+			metrics["Not Present"] = 0;
+			
+			eventMatches.unshift(headerArray);
+			
+			var keys = eventMatches.shift();
+			var keysPass = keys.slice(0);
+			keysPass = keysPass.slice(-23);
+			
+			var objects = eventMatches.map(function(values) {
+				return keys.reduce(function(o, k, i) {
+					o[k] = values[i];
+					return o;
+				}, {});
+			});
+			
+			for(var i=0; i<objects.length; i++){
+				objects[i]["Team #"] = objects[i]["Team #"].toString();
+				delete objects[i]["Event Key"];
+				
+				var object = objects[i];
+				var sum = 0;
+				for(key in object){
+					
+					var value = object[key];
+					if(typeof value === 'string') {
+						
+					} else {
+						if(metrics[key] != null) {
+							value = value * metrics[key];
+							value = Number(value.toFixed(2))
+							object[key] = value;
+							sum = sum + value;
+						}
+					}
+				}
+				object.total = sum;
+				
+			}
+			
+		
+			//var myJson = JSON.stringify(objects);
+			plotArray(objects, keysPass);
+		});
+		
+		return false;
+	}
+	
+	
+</script>
+
